@@ -92,11 +92,11 @@ class AlarmKeypad extends LitElement {
 
   _renderDisplay() {
 
-    // let line1 = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_"+this._config.unique_id+"_display_1";
-    // let line2 = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_"+this._config.unique_id+"_display_2";
+    let line1 = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_"+this._config.unique_id+"_display_1";
+    let line2 = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_"+this._config.unique_id+"_display_2";
 
-    let line1 = "sensor.keypad_"+this._config.unique_id+"_display_1";
-    let line2 = "sensor.keypad_"+this._config.unique_id+"_display_2";
+    // let line1 = "sensor.keypad_"+this._config.unique_id+"_display_1";
+    // let line2 = "sensor.keypad_"+this._config.unique_id+"_display_2";
 
     let kpdline1 = this._updateLine(this.hass.states[line1].state);
     let kpdline2 = this._updateLine(this.hass.states[line2].state);
@@ -264,8 +264,8 @@ class AlarmKeypad extends LitElement {
   updated() {
     
     if (this._config.audio !== false) { 
-      // let beep = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_" +this._config.unique_id+"_beep";
-      let beep = "sensor.keypad_" +this._config.unique_id+"_beep";
+      let beep = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_" +this._config.unique_id+"_beep";
+      // let beep = "sensor.keypad_" +this._config.unique_id+"_beep";
       const beeper = this.hass.states[beep].state;
 
       if (beeper == "0") {
