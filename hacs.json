@@ -1,0 +1,5 @@
+{
+    "name": "Seasoft Galaxy virtual keypad",
+    "homeassistant": "0.84.0",
+    "render_readme": true
+}
