@@ -18,7 +18,9 @@ if (
   customElements.define("ha-switch", customElements.get("paper-toggle-button"));
 }
 
-const LitElement = customElements.get("hui-masonry-view") ? Object.getPrototypeOf(customElements.get("hui-masonry-view")) : Object.getPrototypeOf(customElements.get("hui-view"));
+const LitElement = customElements.get("hui-masonry-view")
+  ? Object.getPrototypeOf(customElements.get("hui-masonry-view"))
+  : Object.getPrototypeOf(customElements.get("hui-view"));
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
@@ -45,8 +47,9 @@ export class AlarmKeypadEditor extends LitElement {
     return this._config.keypad !== false;
   }
 
+  // FIX #7: Was reading this._config._audio (with underscore) — should be .audio
   get _audio() {
-    return this._config._audio !== false;
+    return this._config.audio !== false;
   }
 
   get _unique_id() {
@@ -58,21 +61,17 @@ export class AlarmKeypadEditor extends LitElement {
   }
 
   firstUpdated() {
-    HELPERS.then(help => {
+    HELPERS.then((help) => {
       if (help.importMoreInfoControl) {
         help.importMoreInfoControl("fan");
       }
-    })
+    });
   }
-  
+
   render() {
     if (!this.hass) {
       return html``;
     }
-
-    const entities = Object.keys(this.hass.states).filter(
-      (eid) => eid.substr(0, eid.indexOf(".")) === "AlarmKeypadCard"
-    );
 
     return html`
       <div class="card-config">
@@ -89,24 +88,24 @@ export class AlarmKeypadEditor extends LitElement {
                 .checked=${this._display}
                 .configValue="${"display"}"
                 @change="${this._valueChanged}"
-              ></ha-switch
-              ><span>Show display</span>
+              ></ha-switch>
+              <span>Show display</span>
             </div>
             <div class="switch">
               <ha-switch
                 .checked=${this._keypad}
                 .configValue="${"keypad"}"
                 @change="${this._valueChanged}"
-              ></ha-switch
-              ><span>Show keypad</span>
+              ></ha-switch>
+              <span>Show keypad</span>
             </div>
             <div class="switch">
               <ha-switch
                 .checked=${this._audio}
                 .configValue="${"audio"}"
                 @change="${this._valueChanged}"
-              ></ha-switch
-              ><span>Use audio feedback</span>
+              ></ha-switch>
+              <span>Use audio feedback</span>
             </div>
           </div>
           <paper-input
