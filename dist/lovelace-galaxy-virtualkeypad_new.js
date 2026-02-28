@@ -1,6 +1,12 @@
-console.info("%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.0.4 ", "color: orange; font-weight: bold; background: black", "color: white; font-weight: bold; background: dimgray");
+console.info(
+  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.0.5 ",
+  "color: orange; font-weight: bold; background: black",
+  "color: white; font-weight: bold; background: dimgray"
+);
 
-const LitElement = customElements.get("ha-panel-lovelace") ? Object.getPrototypeOf(customElements.get("ha-panel-lovelace")) : Object.getPrototypeOf(customElements.get("hc-lovelace"));
+const LitElement = customElements.get("ha-panel-lovelace")
+  ? Object.getPrototypeOf(customElements.get("ha-panel-lovelace"))
+  : Object.getPrototypeOf(customElements.get("hc-lovelace"));
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
@@ -26,12 +32,20 @@ const fireEvent = (node, type, detail, options) => {
   return event;
 };
 
+// FIX #1: Only re-render when the relevant sensors actually change,
+// not on every single HA state update.
 function hasConfigOrEntityChanged(element, changedProps) {
-  if (changedProps.has("_config")) {
-    return true;
-  }
-
-  return true;
+  if (changedProps.has("_config")) return true;
+  const hass = changedProps.get("hass");
+  if (!hass) return false;
+  const uid = element._config?.unique_id;
+  if (!uid) return false;
+  const prefix = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_";
+  return (
+    hass.states[prefix + "display_1"] !== element.hass.states[prefix + "display_1"] ||
+    hass.states[prefix + "display_2"] !== element.hass.states[prefix + "display_2"] ||
+    hass.states[prefix + "beep"]      !== element.hass.states[prefix + "beep"]
+  );
 }
 
 class AlarmKeypad extends LitElement {
@@ -55,9 +69,10 @@ class AlarmKeypad extends LitElement {
     return { entity };
   }
 
+  // FIX #2: Validate unique_id (the actual required field) with a clear message.
   setConfig(config) {
-    if (!config.title) {
-      throw new Error("Please setup keypad params");
+    if (!config.unique_id) {
+      throw new Error("unique_id is required — please set it in the card editor.");
     }
     this._config = config;
   }
@@ -66,19 +81,36 @@ class AlarmKeypad extends LitElement {
     return hasConfigOrEntityChanged(this, changedProps);
   }
 
+  // FIX #6: Insert audio elements once after first render so they are never
+  // recreated during updates, preventing playback interruption.
+  firstUpdated() {
+    if (this._config.audio !== false) {
+      const base = "/local/community/lovelace-galaxy-virtualkeypad/";
+      const audioContainer = document.createElement("div");
+      audioContainer.innerHTML = `
+        <audio id="exitsound1" loop><source src="${base}beep.mp3" type="audio/mpeg"></audio>
+        <audio id="exitsound2" loop><source src="${base}beep_fast.mp3" type="audio/mpeg"></audio>
+        <audio id="chime"><source src="${base}ding_dong.mp3" type="audio/mpeg"></audio>
+      `;
+      this.shadowRoot.appendChild(audioContainer);
+    }
+  }
+
   render() {
     if (!this._config || !this.hass) {
       return html``;
     }
 
+    // FIX #4: Apply scale as a CSS transform, not a raw style string.
+    const scale = this._config.scale || 1;
+
     return html`
       <ha-card header="${this._config.title}">
-        <div id="zoom" style="${this._config.scale}">
-          <div class='flex-container' @click="${this.stopPropagation}">
-            <div class='keypad'>
+        <div id="zoom" style="transform: scale(${scale}); transform-origin: top center;">
+          <div class="flex-container" @click="${this.stopPropagation}">
+            <div class="keypad">
               ${this._config.display !== false ? this._renderDisplay() : ""}
               ${this._config.keypad !== false ? this._renderKeypad() : ""}
-              ${this._config.audio !== false ? this._renderAudio() : ""}
             </div>
           </div>
         </div>
@@ -91,15 +123,19 @@ class AlarmKeypad extends LitElement {
   }
 
   _renderDisplay() {
+    const uid = this._config.unique_id;
+    const line1Key = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_display_1";
+    const line2Key = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_display_2";
 
-    let line1 = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_"+this._config.unique_id+"_display_1";
-    let line2 = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_"+this._config.unique_id+"_display_2";
+    // FIX #3: Guard against missing sensors to prevent crash.
+    const s1 = this.hass.states[line1Key];
+    const s2 = this.hass.states[line2Key];
+    if (!s1 || !s2) {
+      return html`<div class="keypad_display" style="color:red;padding:8px;">Sensors not found for ID: ${uid}</div>`;
+    }
 
-    // let line1 = "sensor.keypad_"+this._config.unique_id+"_display_1";
-    // let line2 = "sensor.keypad_"+this._config.unique_id+"_display_2";
-
-    let kpdline1 = this._updateLine(this.hass.states[line1].state);
-    let kpdline2 = this._updateLine(this.hass.states[line2].state);
+    const kpdline1 = this._updateLine(s1.state);
+    const kpdline2 = this._updateLine(s2.state);
 
     return html`
       <div class="keypad_display">
@@ -116,11 +152,8 @@ class AlarmKeypad extends LitElement {
   }
 
   _translateChar(c) {
-    // if (c.match('à') !== null ) return '<span class="blink">' + c + '</span>';
-    // if (c.match('á') !== null ) return '<span class="under">' + c + '</span>';
-    if (c.match('è') !== null ) return '░';
-    if (c.match('é') !== null ) return '▓';
-
+    if (c.match("è") !== null) return "░";
+    if (c.match("é") !== null) return "▓";
     return c;
   }
 
@@ -128,185 +161,95 @@ class AlarmKeypad extends LitElement {
     return html`
       <div class="pad">
         <div>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="1"
-            @click="${this.setState}"
-            title='Unset'>1
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="4"
-            @click="${this.setState}"
-            title='Unset'>4
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="7"
-            @click="${this.setState}"
-            title='Unset'>7
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="*"
-            @click="${this.setState}"
-            title='Unset'>*
-          </button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="1" @click="${this.setState}">1</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="4" @click="${this.setState}">4</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="7" @click="${this.setState}">7</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="*" @click="${this.setState}">*</button>
         </div>
-
         <div>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="2"
-            @click="${this.setState}"
-            title='Unset'>2
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="5"
-            @click="${this.setState}"
-            title='Unset'>5
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="8"
-            @click="${this.setState}"
-            title='Unset'>8
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="0"
-            @click="${this.setState}"
-            title='Unset'>0
-          </button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="2" @click="${this.setState}">2</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="5" @click="${this.setState}">5</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="8" @click="${this.setState}">8</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="0" @click="${this.setState}">0</button>
         </div>
-
         <div>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="3"
-            @click="${this.setState}"
-            title='Unset'>3
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="6"
-            @click="${this.setState}"
-            title='Unset'>6
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="9"
-            @click="${this.setState}"
-            title='Unset'>9
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="#"
-            @click="${this.setState}"
-            title='Unset'>#
-          </button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="3" @click="${this.setState}">3</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="6" @click="${this.setState}">6</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="9" @click="${this.setState}">9</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="#" @click="${this.setState}">#</button>
         </div>
-
         <div>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="A"
-            @click="${this.setState}"
-            title='Unset'>A &gt;
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="B"
-            @click="${this.setState}"
-            title='Unset'>B &lt;
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="C"
-            @click="${this.setState}"
-            title='Unset'>ENT
-          </button>
-          <button
-            class='mdc-button mdc-button--raised mdc-ripple-upgraded'
-            toggles state="D"
-            @click="${this.setState}"
-            title='Unset'>ESC
-          </button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="A" @click="${this.setState}">A &gt;</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="B" @click="${this.setState}">B &lt;</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="C" @click="${this.setState}">ENT</button>
+          <button class="mdc-button mdc-button--raised mdc-ripple-upgraded" state="D" @click="${this.setState}">ESC</button>
         </div>
       </div>
     `;
   }
 
   setState(e) {
-    const newState = e.currentTarget.getAttribute('state');
-    
-    this.hass.callService('mqtt', 'publish', {
-        topic: "galaxy/" + this._config.unique_id + "/keypad/key",
-        payload: newState
+    const newState = e.currentTarget.getAttribute("state");
+    this.hass.callService("mqtt", "publish", {
+      topic: "galaxy/" + this._config.unique_id + "/keypad/key",
+      payload: newState,
     });
   }
 
-  _renderAudio() {
-    return html`
-      <audio id="exitsound1" loop>
-        <source src="/local/community/lovelace-galaxy-virtualkeypad/beep.mp3" type="audio/mpeg">
-      </audio>
-      <audio id="exitsound2" loop>
-        <source src="/local/community/lovelace-galaxy-virtualkeypad/beep_fast.mp3" type="audio/mpeg">
-      </audio>
-      <audio id="chime">
-        <source src="/local/community/lovelace-galaxy-virtualkeypad/ding_dong.mp3" type="audio/mpeg">
-      </audio>
-    `;    
-  }
-
   updated() {
-    
-    if (this._config.audio !== false) { 
-      let beep = "sensor.galaxy_gateway_"+this._config.unique_id+"_keypad_" +this._config.unique_id+"_beep";
-      // let beep = "sensor.keypad_" +this._config.unique_id+"_beep";
-      const beeper = this.hass.states[beep].state;
+    if (this._config.audio === false) return;
 
-      if (beeper == "0") {
-        var promise = this.shadowRoot.getElementById("exitsound1").pause();
-        this.shadowRoot.getElementById("exitsound2").pause();
-      } else if (beeper == "1") {
-        var promise = this.shadowRoot.getElementById("exitsound1").play();
-      } else if (beeper == "2") {
-        var promise = this.shadowRoot.getElementById("exitsound2").play();
-      } else if (beeper == "3") {
-        var promise = this.shadowRoot.getElementById("chime").play();
-      }
+    const uid = this._config.unique_id;
+    const beepKey = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_beep";
+    const beepState = this.hass.states[beepKey];
+    if (!beepState) return;
 
-      if (promise !== undefined) {
-        promise.then(_ => {
-          // Autoplay started!
-        }).catch(error => {
-          console.warn('Sound auto play not enabled, check browser settings');
-        });
-      }
+    const beeper = beepState.state;
+    const sound1 = this.shadowRoot.getElementById("exitsound1");
+    const sound2 = this.shadowRoot.getElementById("exitsound2");
+    const chime  = this.shadowRoot.getElementById("chime");
+
+    // Audio elements may not be ready on very first update
+    if (!sound1) return;
+
+    let promise;
+    if (beeper === "0") {
+      sound1.pause();
+      sound2.pause();
+    } else if (beeper === "1") {
+      promise = sound1.play();
+    } else if (beeper === "2") {
+      promise = sound2.play();
+    } else if (beeper === "3") {
+      promise = chime.play();
+    }
+
+    if (promise !== undefined) {
+      promise.catch(() => {
+        console.warn("Sound autoplay blocked — check browser settings.");
+      });
     }
   }
 
+  // FIX #8: Correctly check keypad !== false (default is shown).
   getCardSize() {
     let size = 2;
-    if (this._config.keypad) size += 4;     // 550px - 190px / 50
+    if (this._config.keypad !== false) size += 4;
     return size;
   }
-  
+
   static get styles() {
     return css`
-      ha-card {  
+      ha-card {
         padding-bottom: 16px;
         position: relative;
         font-size: calc(var(--base-unit));
       }
 
       .flex-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
 
       @keyframes mdc-ripple-fg-radius-in{from{animation-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transform:translate(var(--mdc-ripple-fg-translate-start, 0)) scale(1)}to{transform:translate(var(--mdc-ripple-fg-translate-end, 0)) scale(var(--mdc-ripple-fg-scale, 1))}}
@@ -336,7 +279,7 @@ class AlarmKeypad extends LitElement {
       }
       #keypad_state2 {
         white-space: pre-wrap;
-      } 
+      }
 
       .pad {
         display: flex;
@@ -356,23 +299,19 @@ class AlarmKeypad extends LitElement {
         text-decoration: underline;
       }
 
-      /* text blinking */
-      .blink{
-        animation:blinkingText 1.2s infinite;
+      .blink {
+        animation: blinkingText 1.2s infinite;
       }
 
-      @keyframes blinkingText{
-          0%  { color: #000;        }
-          49% { color: #000;        }
-          60% { color: transparent; }
-          99% { color:transparent;  }
-          100%{ color: #000;        }
+      @keyframes blinkingText {
+        0%   { color: #000;        }
+        49%  { color: #000;        }
+        60%  { color: transparent; }
+        99%  { color: transparent; }
+        100% { color: #000;        }
       }
-
-    
     `;
   }
 }
 
-customElements.define('lovelace-galaxy-virtualkeypad', AlarmKeypad);
-   
+customElements.define("lovelace-galaxy-virtualkeypad", AlarmKeypad);
