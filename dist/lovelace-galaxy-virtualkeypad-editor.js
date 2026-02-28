@@ -76,12 +76,13 @@ export class AlarmKeypadEditor extends LitElement {
     return html`
       <div class="card-config">
         <div>
-          <paper-input
+          <ha-textfield
             label="Name"
             .value="${this._title}"
             .configValue="${"title"}"
-            @value-changed="${this._valueChanged}"
-          ></paper-input>
+            @change="${this._valueChanged}"
+            style="width:100%"
+          ></ha-textfield>
           <div class="switches">
             <div class="switch">
               <ha-switch
@@ -108,22 +109,23 @@ export class AlarmKeypadEditor extends LitElement {
               <span>Use audio feedback</span>
             </div>
           </div>
-          <paper-input
+          <ha-textfield
             label="Unique module ID"
-            type="text"
-            value=${this._unique_id}
+            .value="${this._unique_id}"
             .configValue="${"unique_id"}"
-            @value-changed="${this._valueChanged}"
-          ></paper-input>
-          <paper-input
+            @change="${this._valueChanged}"
+            style="width:100%"
+          ></ha-textfield>
+          <ha-textfield
             label="Card scale"
             type="number"
             min="0.1"
             max="10"
-            value=${this._scale}
+            .value="${this._scale}"
             .configValue="${"scale"}"
-            @value-changed="${this._valueChanged}"
-          ></paper-input>
+            @change="${this._valueChanged}"
+            style="width:100%"
+          ></ha-textfield>
         </div>
       </div>
     `;
@@ -134,19 +136,16 @@ export class AlarmKeypadEditor extends LitElement {
       return;
     }
     const target = ev.target;
-    if (this[`_${target.configValue}`] === target.value) {
+    const value = target.checked !== undefined ? target.checked : target.value;
+    if (!target.configValue || this[`_${target.configValue}`] === value) {
       return;
     }
-    if (target.configValue) {
-      if (target.value === "") {
-        delete this._config[target.configValue];
-      } else {
-        this._config = {
-          ...this._config,
-          [target.configValue]:
-            target.checked !== undefined ? target.checked : target.value,
-        };
-      }
+    if (value === "" || value === undefined) {
+      const config = { ...this._config };
+      delete config[target.configValue];
+      this._config = config;
+    } else {
+      this._config = { ...this._config, [target.configValue]: value };
     }
     fireEvent(this, "config-changed", { config: this._config });
   }
