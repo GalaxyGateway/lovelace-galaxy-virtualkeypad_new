@@ -123,17 +123,7 @@ export class AlarmKeypadEditor extends LitElement {
             @change="${this._valueChanged}"
             style="width:100%"
           ></ha-textfield>
-          <ha-textfield
-            label="Card scale"
-            type="number"
-            min="0.1"
-            max="2"
-            step="0.1"
-            .value="${this._scale}"
-            .configValue="${"scale"}"
-            @change="${this._valueChanged}"
-            style="width:100%"
-          ></ha-textfield>
+
 
           <div class="color-row">
             <div class="color-field">
