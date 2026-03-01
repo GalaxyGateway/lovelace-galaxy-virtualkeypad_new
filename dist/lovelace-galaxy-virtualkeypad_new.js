@@ -245,7 +245,7 @@ class AlarmKeypad extends LitElement {
   static get styles() {
     return css`
       ha-card {
-        padding-bottom: 16px;
+        padding-bottom: 10px;
         position: relative;
         font-size: calc(var(--base-unit));
       }
@@ -260,10 +260,9 @@ class AlarmKeypad extends LitElement {
         border-radius: 10px;
         width: 200px;
         height: 50px;
-        margin: auto;
-        padding-top: 15px;
+        padding-top: 10px;
         padding-bottom: 10px;
-        margin-bottom: 20px;
+        margin: 10px auto 10px auto;
       }
 
       .keypad_state {
