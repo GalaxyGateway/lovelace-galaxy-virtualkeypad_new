@@ -1,5 +1,5 @@
 console.info(
-  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.0.5 ",
+  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.1.0 ",
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -16,7 +16,7 @@ window.customCards.push({
   name: "Galaxy Keypad",
   description: "A virtual keypad for Honeywell Galaxy.",
   preview: true,
-  documentationURL: "https://github.com/GalaxyGateway/lovelace-galaxy-virtualkeypad",
+  documentationURL: "https://github.com/GalaxyGateway/lovelace-galaxy-virtualkeypad_new",
 });
 
 const fireEvent = (node, type, detail, options) => {
@@ -82,7 +82,7 @@ class AlarmKeypad extends LitElement {
   // Insert audio elements once so they are never recreated during updates.
   firstUpdated() {
     if (this._config.audio !== false) {
-      const base = "/local/community/lovelace-galaxy-virtualkeypad/";
+      const base = "/hacsfiles/lovelace-galaxy-virtualkeypad/";
       const audioContainer = document.createElement("div");
       audioContainer.innerHTML = `
         <audio id="exitsound1" loop><source src="${base}beep.mp3" type="audio/mpeg"></audio>
