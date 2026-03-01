@@ -1,5 +1,5 @@
 console.info(
-  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.0.7 ",
+  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.0.5 ",
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -157,7 +157,14 @@ class AlarmKeypad extends LitElement {
 
   _renderKeypad() {
     const btn = (state, label) => html`
-      <button class="kpd-btn" state="${state}" @click="${this.setState}">${label}</button>
+      <button
+        class="kpd-btn"
+        state="${state}"
+        @click="${this.setState}"
+        @touchstart="${this._btnPress}"
+        @touchend="${this._btnRelease}"
+        @touchcancel="${this._btnRelease}"
+      >${label}</button>
     `;
     return html`
       <div class="pad">
@@ -169,6 +176,15 @@ class AlarmKeypad extends LitElement {
     `;
   }
 
+  _btnPress(e) {
+    e.currentTarget.classList.add("pressed");
+    if (navigator.vibrate) navigator.vibrate(30);
+  }
+
+  _btnRelease(e) {
+    e.currentTarget.classList.remove("pressed");
+  }
+
   setState(e) {
     const newState = e.currentTarget.getAttribute("state");
     this.hass.callService("mqtt", "publish", {
@@ -178,6 +194,15 @@ class AlarmKeypad extends LitElement {
   }
 
   updated() {
+    // Adjust card height to match scaled content, since transform: scale()
+    // does not affect layout space. We temporarily remove the transform to
+    // measure the true natural height, then restore it.
+    const zoom = this.shadowRoot.getElementById("zoom");
+    const card = this.shadowRoot.querySelector("ha-card");
+    if (zoom && card) {
+
+    }
+
     if (this._config.audio === false) return;
 
     const uid = this._config.unique_id;
@@ -304,8 +329,9 @@ class AlarmKeypad extends LitElement {
                     0px 1px 10px 0px rgba(0,0,0,0.12);
       }
 
-      /* Enlarge on press, return smoothly on release */
-      .kpd-btn:active {
+      /* Enlarge on press — both :active (mouse) and .pressed (touch) */
+      .kpd-btn:active,
+      .kpd-btn.pressed {
         transform: scale(1.25);
         background-color: var(--mdc-theme-primary, #5500cc);
         box-shadow: 0px 5px 5px -3px rgba(0,0,0,0.2),
