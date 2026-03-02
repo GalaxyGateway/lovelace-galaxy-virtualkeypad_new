@@ -1,5 +1,5 @@
 console.info(
-  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.1.0 ",
+  "%c  lovelace-galaxy-virtualkeypad  \n%c Version 0.1.1 ",
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -39,7 +39,10 @@ function hasConfigOrEntityChanged(element, changedProps) {
   if (!hass) return false;
   const uid = element._config?.unique_id;
   if (!uid) return false;
-  const prefix = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_";
+  const legacy = element._config?.legacy_naming;
+  const prefix = legacy
+    ? "sensor.keypad_" + uid + "_"
+    : "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_";
   return (
     hass.states[prefix + "display_1"] !== element.hass.states[prefix + "display_1"] ||
     hass.states[prefix + "display_2"] !== element.hass.states[prefix + "display_2"] ||
@@ -118,10 +121,17 @@ class AlarmKeypad extends LitElement {
     e.stopPropagation();
   }
 
+  _sensorKey(uid, suffix) {
+    if (this._config.legacy_naming) {
+      return "sensor.keypad_" + uid + "_" + suffix;
+    }
+    return "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_" + suffix;
+  }
+
   _renderDisplay() {
     const uid = this._config.unique_id;
-    const line1Key = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_display_1";
-    const line2Key = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_display_2";
+    const line1Key = this._sensorKey(uid, "display_1");
+    const line2Key = this._sensorKey(uid, "display_2");
 
     const s1 = this.hass.states[line1Key];
     const s2 = this.hass.states[line2Key];
@@ -206,7 +216,7 @@ class AlarmKeypad extends LitElement {
     if (this._config.audio === false) return;
 
     const uid = this._config.unique_id;
-    const beepKey = "sensor.galaxy_gateway_" + uid + "_keypad_" + uid + "_beep";
+    const beepKey = this._sensorKey(uid, "beep");
     const beepState = this.hass.states[beepKey];
     if (!beepState) return;
 
@@ -361,3 +371,4 @@ class AlarmKeypad extends LitElement {
 }
 
 customElements.define("lovelace-galaxy-virtualkeypad", AlarmKeypad);
+
