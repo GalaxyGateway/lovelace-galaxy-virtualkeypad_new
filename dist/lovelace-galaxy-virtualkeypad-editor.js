@@ -55,6 +55,10 @@ export class AlarmKeypadEditor extends LitElement {
     return this._config.unique_id || "";
   }
 
+  get _legacy_naming() {
+    return this._config.legacy_naming === true;
+  }
+
   get _scale() {
     return this._config.scale || "";
   }
@@ -115,6 +119,14 @@ export class AlarmKeypadEditor extends LitElement {
               ></ha-switch>
               <span>Use audio feedback</span>
             </div>
+            <div class="switch">
+              <ha-switch
+                .checked=${this._legacy_naming}
+                .configValue="${"legacy_naming"}"
+                @change="${this._valueChanged}"
+              ></ha-switch>
+              <span>Use legacy sensor naming</span>
+            </div>
           </div>
           <ha-textfield
             label="Unique module ID"
@@ -123,6 +135,12 @@ export class AlarmKeypadEditor extends LitElement {
             @change="${this._valueChanged}"
             style="width:100%"
           ></ha-textfield>
+          <div class="scheme-hint">
+            ${this._legacy_naming
+              ? html`<span>📡 Legacy: <code>sensor.keypad_${this._unique_id || "&lt;id&gt;"}_display_1</code></span>`
+              : html`<span>📡 New: <code>sensor.galaxy_gateway_${this._unique_id || "&lt;id&gt;"}_keypad_${this._unique_id || "&lt;id&gt;"}_display_1</code></span>`
+            }
+          </div>
 
 
           <div class="color-row">
@@ -247,7 +265,17 @@ export class AlarmKeypadEditor extends LitElement {
         font-family: monospace;
         color: var(--primary-text-color);
       }
-      .display-preview {
+      .scheme-hint {
+        font-size: 11px;
+        color: var(--secondary-text-color);
+        margin: 4px 0 8px 0;
+        word-break: break-all;
+      }
+      .scheme-hint code {
+        background: var(--code-editor-background-color, #f4f4f4);
+        border-radius: 3px;
+        padding: 1px 4px;
+      }
         margin-top: 12px;
         border-radius: 8px;
         padding: 10px 16px;
@@ -263,3 +291,4 @@ export class AlarmKeypadEditor extends LitElement {
 }
 
 customElements.define("lovelace-galaxy-virtualkeypad-editor", AlarmKeypadEditor);
+
